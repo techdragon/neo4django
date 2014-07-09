@@ -13,3 +13,4 @@ virtualenv
 lib
 build
 dist
+*.egg-info

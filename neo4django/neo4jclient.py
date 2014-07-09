@@ -1,6 +1,8 @@
 from urlparse import urlparse
+from distutils.version import StrictVersion
 from neo4jrestclient.client import GraphDatabase, RAW as RETURNS_RAW
 from neo4jrestclient.request import Request
+from neo4jrestclient.constants import RAW
 from django.conf import settings as _settings
 from django.core import exceptions
 
@@ -44,28 +46,73 @@ class EnhancedGraphDatabase(GraphDatabase):
             auth = {}
         return Request(**auth)
 
+    # def cleandb(self):
+    #     request = self.new_request()
+    #     response, content = request.delete(self._cleandb_uri)
+    #     if response.status != 200:
+    #         warnings.warn('The CLEANDB_URI you specified is invalid: %s'
+    #                       % self._cleandb_uri)
+    #         # then try to do it with gremlin
+    #         script = """
+    #         try
+    #         {
+    #             indexManager = g.getRawGraph().index()
+    #             indexManager.nodeIndexNames().each{g.dropIndex(it)}
+    #             indexManager.relationshipIndexNames().each{g.dropIndex(it)}
+    #             g.V.filter{it.id!=0}.sideEffect{g.removeVertex(it)}.iterate();
+    #             results = true
+    #         }
+    #         catch(Exception e){results = false}
+    #         """
+    #         gremlin_ret = self.gremlin(script, raw=True)
+    #         if gremlin_ret != 'true':
+    #             error_msg = "\nDatabase couldn't be cleared - have you installed the cleandb extension at https://github.com/jexp/neo4j-clean-remote-db-addon?"
+    #             raise exceptions.ImproperlyConfigured(error_msg)
+
+
+    def cleandb_using_cypher(self):
+        query = """
+        MATCH (n)
+        OPTIONAL MATCH (n)-[r]-()
+        DELETE n,r
+        """
+        cleardb_result = self.query(q=query)
+        warnings.warn(str(dir(cleardb_result)))
+        warnings.warn(str(cleardb_result.get_response()))
+        # confirm the db is empty
+        query = """
+        MATCH (n)
+        RETURN count(*);
+        """
+        empty_check = self.query(q=query)
+        cypher_blank_db_result = {u'data': [[0]], u'columns': [u'count(*)']}
+        warnings.warn(str(type(cypher_blank_db_result)))
+        warnings.warn(str(cypher_blank_db_result))
+        warnings.warn(str(type(empty_check.get_response())))
+        warnings.warn(str(empty_check.get_response()))
+
+        if empty_check.get_response() == cypher_blank_db_result:
+            cleardb_result = 'true'
+            warnings.warn('clear db worked')
+        else:
+            cleardb_result = 'false'
+            warnings.warn('clear db did not work')
+
+        return cleardb_result
+
     def cleandb(self):
-        request = self.new_request()
-        response, content = request.delete(self._cleandb_uri)
-        if response.status != 200:
-            warnings.warn('The CLEANDB_URI you specified is invalid: %s'
-                          % self._cleandb_uri)
-            # then try to do it with gremlin
-            script = """
-            try
-            {
-                indexManager = g.getRawGraph().index()
-                indexManager.nodeIndexNames().each{g.dropIndex(it)}
-                indexManager.relationshipIndexNames().each{g.dropIndex(it)}
-                g.V.filter{it.id!=0}.sideEffect{g.removeVertex(it)}.iterate();
-                results = true
-            }
-            catch(Exception e){results = false}
-            """
-            gremlin_ret = self.gremlin(script, raw=True)
-            if gremlin_ret != 'true':
-                error_msg = "\nDatabase couldn't be cleared - have you installed the cleandb extension at https://github.com/jexp/neo4j-clean-remote-db-addon?"
-                raise exceptions.ImproperlyConfigured(error_msg)
+        # request = self.new_request()
+        # response, content = request.delete(self._cleandb_uri)
+        # if response.status != 200:
+        #     warnings.warn('The CLEANDB_URI you specified is invalid: %s'
+        #                   % self._cleandb_uri)
+        if StrictVersion(self.VERSION) >= StrictVersion('2.0.0'):
+            warnings.warn('cleardb plugin will not work, clearing DB using Cypher')
+            cleardb_result = self.cleandb_using_cypher()
+
+        if cleardb_result != 'true':
+            error_msg = "\n Database couldnt be cleared using Cypher"
+            raise exceptions.ImproperlyConfigured(error_msg)
 
     def gremlin(self, script, tx=False, raw=False, **params):
         """
