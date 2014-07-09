@@ -1,13 +1,13 @@
 import org.neo4j.helpers.collection.MapUtil
 import org.neo4j.graphdb.index.IndexManager
-import com.tinkerpop.blueprints.pgm.impls.neo4j.Neo4jIndex
+import com.tinkerpop.blueprints.impls.neo4j2.Neo4j2Index
 
 import org.neo4j.cypher.javacompat.ExecutionEngine
 
 class Neo4Django {
     static public binding
     static transactions = []
-    static bufferSizes = []
+    // static bufferSizes = []
     static parsedCypher = [:]
     static final AUTO_PROP_INDEX_KEY = 'LAST_AUTO_VALUE'
     static final UNIQUENESS_ERROR_MESSAGE = 'neo4django: uniqueness error'
@@ -87,23 +87,28 @@ class Neo4Django {
     }
 
     static getGhettoWriteLock(element){
-        element.removeProperty('thisPropshouldxneverbeused')
+        try {
+            element.removeProperty('thisPropshouldxneverbeused')
+        }
+        catch (Exception e){
+            // throw e
+        }
     }
 
     static startTx() {
-        bufferSizes << binding.g.getMaxBufferSize()
-        binding.g.setMaxBufferSize(0)
+        // bufferSizes << binding.g.getMaxBufferSize()
+        // binding.g.setMaxBufferSize(0)
         def tx = binding.g.getRawGraph().beginTx()
         transactions << tx
         return tx
     }
 
     static finishTx(success) {
-        def oldBufferSize = bufferSizes.pop()
+        // def oldBufferSize = bufferSizes.pop()
         def tx = transactions.pop()
         if (success) tx.success(); else tx.failure()
         tx.finish()
-        binding.g.setMaxBufferSize(oldBufferSize)
+        // binding.g.setMaxBufferSize(oldBufferSize)
     }
 
     static passTx() {
@@ -116,7 +121,7 @@ class Neo4Django {
 
     static getTypeNode(types) {
         def g = binding.g
-        def originalBufferSize = g.getMaxBufferSize()
+        // def originalBufferSize = g.getMaxBufferSize()
         startTx()
         try {
             def curVertex = g.v(0)
@@ -166,7 +171,7 @@ class Neo4Django {
             def opts = MapUtil.stringMap(IndexManager.PROVIDER, "lucene", "type", "fulltext")
             rawIndex = g.getRawGraph().index().forNodes(indexName, opts)
             //XXX can't use g.idx because gremlin doesn't get indices dynamically
-            index = new Neo4jIndex(indexName, Vertex.class, g)
+            index = new Neo4j2Index(indexName, Vertex.class, g)
         }
         else {
             rawIndex = g.getRawGraph().index().forNodes(indexName)
@@ -243,7 +248,12 @@ class Neo4Django {
 
             //set the value
             if (value == null){
-                node.removeProperty(prop)
+                try {
+                    node.removeProperty(prop)
+                }
+                catch (Exception e){
+                    //throw e
+                }
             }
             else {
                 if (value instanceof List) {

@@ -4,6 +4,8 @@ from threading import Thread
 from Queue import Queue
 from time import sleep
 
+import warnings
+
 def setup():
     global Person, neo4django, gdb, neo4jrestclient, neo_constants, settings, models
 
@@ -20,6 +22,9 @@ def test_typenode_transactionality():
         pass
 
     exc_queue = Queue()
+    # warnings.warn(str(type(exc_queue)))
+    # warnings.warn(str(exc_queue))
+
 
     def race():
         r = RaceModel()
@@ -78,6 +83,6 @@ def test_autoproperty_transactionality():
             queue.put(str(e))
         else:
             queue.put(True)
-    
+
     race(autorace, 3)
     eq_(len(set(m.some_id for m in AutoRaceModel.objects.all())), 3)

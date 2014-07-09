@@ -20,7 +20,7 @@ def teardown():
 
 def test_cleandb():
     def assert_deletion(ids):
-        eq_(connection.gremlin('results=nodeIds.collect{(boolean)g.v(it)}.any()', nodeIds = ids, raw=True), 'false')
+        eq_(connection.gremlin('results=nodeIds.collect{(boolean)g.v(it)}.any()', nodeIds = ids, raw=True), False)
 
     node_id = connection.gremlin('results=g.addVertex().id')
     connection.cleandb()

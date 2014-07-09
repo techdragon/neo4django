@@ -77,8 +77,9 @@ class EnhancedGraphDatabase(GraphDatabase):
         DELETE n,r
         """
         cleardb_result = self.query(q=query)
-        warnings.warn(str(dir(cleardb_result)))
+        warnings.warn(str(type(cleardb_result.get_response())))
         warnings.warn(str(cleardb_result.get_response()))
+
         # confirm the db is empty
         query = """
         MATCH (n)
@@ -130,6 +131,8 @@ class EnhancedGraphDatabase(GraphDatabase):
         import_statements = [m.group() for m in import_regex.finditer(script)]
         importless_script = import_regex.sub('', script)
 
+        # if StrictVersion(self.VERSION) >= StrictVersion('2.0.0'):
+        # else:
         lib_script = '''
         import groovy.json.JsonBuilder;
         %(imports)s
@@ -163,7 +166,7 @@ class EnhancedGraphDatabase(GraphDatabase):
                      'library_names': library_list,
                      'load_error': LIBRARY_LOADING_ERROR,
                      'tx_end': ''
-                     }
+                    }
         if tx:
             repl_dict['tx_begin'] = 'g.setMaxBufferSize(0); rootTx = g.getRawGraph().beginTx()'
             repl_dict['tx_end'] = 'rootTx.success(); rootTx.finish();' \
@@ -173,10 +176,14 @@ class EnhancedGraphDatabase(GraphDatabase):
         lib_script %= repl_dict
         ext = self.extensions.GremlinPlugin
 
-        def include_main_library(s):
+        def include_main_library(self, s):
             #get the library source
-            lib_source = _pkg_resource_stream(__package__.split('.', 1)[0],
-                                              'gremlin/library.groovy').read()
+            if StrictVersion(self.VERSION) >= StrictVersion('2.0.0'):
+                lib_source = _pkg_resource_stream(__package__.split('.', 1)[0],
+                                                  'gremlin/library2.groovy').read()
+            else:
+                lib_source = _pkg_resource_stream(__package__.split('.', 1)[0],
+                                                  'gremlin/library.groovy').read()
             return lib_source + '\n' + s
 
         def include_unloaded_libraries(s):
@@ -186,18 +193,22 @@ class EnhancedGraphDatabase(GraphDatabase):
                     s = source + '\n' + s
             return s
 
-        def include_all_libraries(s):
+        def include_all_libraries(self, s):
             for name in other_libraries.keys():
                 source = other_libraries[name].source
                 other_libraries[name] = Library(source, True)
                 s = source + '\n' + s
-            return include_main_library(s)
+            return include_main_library(self, s)
 
-        def send_script(s, params):
+        def send_script(self, s, params):
+            warnings.warn(str(s))
+            warnings.warn(str(params))
             execute_kwargs = {}
             if raw:
                 execute_kwargs['returns'] = RETURNS_RAW
             script_rv = ext.execute_script(s, params=params, **execute_kwargs)
+            warnings.warn(str(type(script_rv)))
+            warnings.warn(str(script_rv))
             if isinstance(script_rv, basestring):
                 if LIBRARY_ERROR_REGEX.match(script_rv):
                     raise LibraryCouldNotLoad
@@ -207,8 +218,8 @@ class EnhancedGraphDatabase(GraphDatabase):
             return script_rv
 
         if getattr(_settings, 'NEO4DJANGO_DEBUG_GREMLIN', False):
-            all_libs = include_all_libraries(lib_script)
-            return send_script(all_libs, params)
+            all_libs = include_all_libraries(self, lib_script)
+            return send_script(self, all_libs, params)
         for i in xrange(LIBRARY_LOADING_RETRIES + 1):
             try:
                 return send_script(include_unloaded_libraries(lib_script),
@@ -223,7 +234,8 @@ class EnhancedGraphDatabase(GraphDatabase):
         Execute a Gremlin script server-side and return the results. The script
         will be wrapped in a transaction.
         """
-        return self.gremlin(script, tx=True, **params)
+        # return self.gremlin(script, tx=True, **params)
+        return self.gremlin(script, tx=False, **params)
 
     def cypher(self, query, **params):
         ext = self.extensions.CypherPlugin

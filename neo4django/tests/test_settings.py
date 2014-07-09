@@ -49,7 +49,7 @@ USE_TZ = True
 
 INSTALLED_APPS = (
     'neo4django.tests',
-    'neo4django.graph_auth', 
+    'neo4django.graph_auth',
 )
 
 SECRET_KEY="shutupdjangowe'retryingtotesthere"
@@ -57,4 +57,4 @@ SECRET_KEY="shutupdjangowe'retryingtotesthere"
 DEBUG = True
 
 NEO4DJANGO_PROFILE_REQUESTS = False
-NEO4DJANGO_DEBUG_GREMLIN = False
+NEO4DJANGO_DEBUG_GREMLIN = True
